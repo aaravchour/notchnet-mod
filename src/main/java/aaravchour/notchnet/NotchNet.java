@@ -47,7 +47,14 @@ public class NotchNet implements ModInitializer {
 									CompletableFuture.runAsync(() -> {
 										try {
 											String answer = askQuestion(question);
-											source.sendFeedback(() -> Text.literal("🧠 " + answer), false);
+
+											// Replace escaped \n with actual newlines
+											answer = answer.replace("\\n", "\n");
+
+											// Send each line separately for proper Minecraft chat display
+											for (String line : answer.split("\n")) {
+												source.sendFeedback(() -> Text.literal("🧠 " + line), false);
+											}
 										} catch (Exception e) {
 											source.sendFeedback(() -> Text.literal("⚠️ Error: " + e.getMessage()), false);
 											e.printStackTrace();
