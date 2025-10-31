@@ -19,10 +19,9 @@ import java.util.concurrent.CompletableFuture;
 public class NotchNet implements ModInitializer {
 
 	private static final String MOD_ID = "notchnet";
-	private static final String API_BASE = "http://localhost:8000"; // Flask server
-	private static final String ENCODED_KEY = "TVlfUkVBTF9BUElfS0VZ"; // Base64 of your real API key
+	private static final String API_BASE = "https://minecraft-rag-server-592661633041.us-central1.run.app";
+	private static final String ENCODED_KEY = "TVlfUkVBTF9BUElfS0VZ";
 
-	// Cached token info
 	private static String cachedToken = null;
 	private static Instant tokenExpiry = Instant.EPOCH;
 
@@ -48,10 +47,8 @@ public class NotchNet implements ModInitializer {
 										try {
 											String answer = askQuestion(question);
 
-											// Replace escaped \n with actual newlines
 											answer = answer.replace("\\n", "\n");
 
-											// Send each line separately for proper Minecraft chat display
 											for (String line : answer.split("\n")) {
 												source.sendFeedback(() -> Text.literal("🧠 " + line), false);
 											}
@@ -106,7 +103,7 @@ public class NotchNet implements ModInitializer {
 		conn.setRequestMethod("POST");
 		conn.setRequestProperty("X-API-Key", apiKey);
 		conn.setDoOutput(true);
-		conn.getOutputStream().close(); // Empty POST
+		conn.getOutputStream().close();
 
 		int code = conn.getResponseCode();
 		String body = readResponse(conn);
@@ -123,7 +120,7 @@ public class NotchNet implements ModInitializer {
 		}
 
 		cachedToken = tokenStr;
-		int expires = Integer.parseInt(expiresStr.replaceAll("\\D", "")); // safe parse
+		int expires = Integer.parseInt(expiresStr.replaceAll("\\D", ""));
 		tokenExpiry = Instant.now().plusSeconds(expires - 10);
 		System.out.println("[NotchNet] Cached token valid for " + expires + "s");
 
@@ -146,7 +143,6 @@ public class NotchNet implements ModInitializer {
 		}
 	}
 
-	// ✅ Fixed parser that supports quoted and unquoted JSON fields
 	private static String parseJsonField(String json, String field) {
 		try {
 			String search = "\"" + field + "\":";
@@ -154,16 +150,13 @@ public class NotchNet implements ModInitializer {
 			if (start == -1) return null;
 			int pos = start + search.length();
 
-			// Skip whitespace
 			while (pos < json.length() && Character.isWhitespace(json.charAt(pos))) pos++;
 
-			// Handle quoted string values
 			if (json.charAt(pos) == '"') {
 				int firstQuote = pos + 1;
 				int secondQuote = json.indexOf("\"", firstQuote);
 				return json.substring(firstQuote, secondQuote);
 			} else {
-				// Handle numeric / boolean / null
 				int end = pos;
 				while (end < json.length() && ",}]".indexOf(json.charAt(end)) == -1) end++;
 				return json.substring(pos, end).trim();
