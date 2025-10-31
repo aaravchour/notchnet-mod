@@ -3,9 +3,9 @@
 	"id": "notchnet",
 	"version": "${version}",
 	"name": "NotchNet",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Ask questions and get AI-powered answers directly in chat. Simple, fast, and fun – bring AI into your Minecraft world!",
 	"authors": [
-		"Me!"
+		"ravistarr"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
