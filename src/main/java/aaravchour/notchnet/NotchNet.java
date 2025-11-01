@@ -14,23 +14,41 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 
 public class NotchNet implements ModInitializer {
 
 	private static final String MOD_ID = "notchnet";
-	private static final String API_BASE = "https://minecraft-rag-server-592661633041.us-central1.run.app";
-	private static final String ENCODED_KEY = "TVlfUkVBTF9BUElfS0VZ";
-
-	private static String cachedToken = null;
-	private static Instant tokenExpiry = Instant.EPOCH;
+	private static String API_BASE;
+	private static final String MOD_API_KEY = "a_secret_key_for_your_mod"; // This should match the key in your auth server
 
 	@Override
 	public void onInitialize() {
+		loadProperties();
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
 				register(dispatcher)
 		);
 		System.out.println("[NotchNet] Loaded successfully!");
+	}
+
+	private void loadProperties() {
+		Properties prop = new Properties();
+		try (InputStream input = NotchNet.class.getClassLoader().getResourceAsStream("notchnet.properties")) {
+			if (input == null) {
+				System.out.println("Sorry, unable to find notchnet.properties");
+				return;
+			}
+			prop.load(input);
+			API_BASE = prop.getProperty("api.base.url");
+
+			if (API_BASE == null) {
+				System.out.println("Missing api.base.url in notchnet.properties");
+			}
+
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
 	}
 
 	private void register(CommandDispatcher<ServerCommandSource> dispatcher) {
@@ -65,15 +83,12 @@ public class NotchNet implements ModInitializer {
 	}
 
 	private static String askQuestion(String question) throws IOException {
-		String token = getValidToken();
-		if (token == null) throw new IOException("Failed to obtain token");
-
 		String json = "{\"question\":\"" + question.replace("\"", "\\\"") + "\"}";
 
-		HttpURLConnection conn = (HttpURLConnection) new URL(API_BASE + "/ask").openConnection();
+		HttpURLConnection conn = (HttpURLConnection) new URL(API_BASE + "/get-data").openConnection();
 		conn.setRequestMethod("POST");
 		conn.setRequestProperty("Content-Type", "application/json");
-		conn.setRequestProperty("Authorization", "Bearer " + token);
+		conn.setRequestProperty("X-Mod-Api-Key", MOD_API_KEY);
 		conn.setDoOutput(true);
 
 		try (OutputStream os = conn.getOutputStream()) {
@@ -82,7 +97,7 @@ public class NotchNet implements ModInitializer {
 
 		int code = conn.getResponseCode();
 		String body = readResponse(conn);
-		System.out.println("[NotchNet] /ask response: " + code + " " + body);
+		System.out.println("[NotchNet] /get-data response: " + code + " " + body);
 
 		if (code != 200) {
 			throw new IOException("Server returned " + code + ": " + body);
@@ -91,41 +106,7 @@ public class NotchNet implements ModInitializer {
 		return parseJsonField(body, "answer");
 	}
 
-	private static String getValidToken() throws IOException {
-		if (cachedToken != null && Instant.now().isBefore(tokenExpiry)) {
-			return cachedToken;
-		}
 
-		String apiKey = new String(Base64.getDecoder().decode(ENCODED_KEY), StandardCharsets.UTF_8);
-		System.out.println("[NotchNet] Using API key: " + apiKey);
-
-		HttpURLConnection conn = (HttpURLConnection) new URL(API_BASE + "/get_token").openConnection();
-		conn.setRequestMethod("POST");
-		conn.setRequestProperty("X-API-Key", apiKey);
-		conn.setDoOutput(true);
-		conn.getOutputStream().close();
-
-		int code = conn.getResponseCode();
-		String body = readResponse(conn);
-		System.out.println("[NotchNet] /get_token response: " + code + " " + body);
-
-		if (code != 200) {
-			throw new IOException("Failed to get token: " + body);
-		}
-
-		String tokenStr = parseJsonField(body, "token");
-		String expiresStr = parseJsonField(body, "expires_in");
-		if (tokenStr == null || expiresStr == null) {
-			throw new IOException("Invalid token response: " + body);
-		}
-
-		cachedToken = tokenStr;
-		int expires = Integer.parseInt(expiresStr.replaceAll("\\D", ""));
-		tokenExpiry = Instant.now().plusSeconds(expires - 10);
-		System.out.println("[NotchNet] Cached token valid for " + expires + "s");
-
-		return cachedToken;
-	}
 
 	private static String readResponse(HttpURLConnection conn) throws IOException {
 		InputStream stream = (conn.getResponseCode() >= 200 && conn.getResponseCode() < 300)
