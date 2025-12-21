@@ -9,7 +9,7 @@
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/aaravchour/NotchNet-fabric-plugin"
 	},
 	"license": "GPLv3",
 	"icon": "assets/notchnet/icon.png",
@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"aaravchour.notchnet.NotchNetClient"
+		],
+		"modmenu": [
+			"aaravchour.notchnet.NotchNetModMenu"
 		]
 	},
 	"mixins": [
@@ -33,10 +36,9 @@
 		"fabricloader": ">=0.17.3",
 		"minecraft": "~1.21.10",
 		"java": ">=21",
-		"fabric-api": "*",
-		"modmenu": "*"
+		"fabric-api": "*"
 	},
 	"suggests": {
-		"another-mod": "*"
+		"modmenu": "*"
 	}
 }
