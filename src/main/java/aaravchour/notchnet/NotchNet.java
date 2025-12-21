@@ -10,8 +10,6 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,18 +18,11 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class NotchNet implements ModInitializer {
-
-	private static final String MOD_ID = "notchnet";
-	// IMPORTANT: This key MUST match the one used in your Auth Server (app.py).
-	private static final String MOD_SECRET_KEY = "D4uSaT8Kmc6O-ZMg6mngr_JILpviy4f78tLaYIg762o";
 
 	@Override
 	public void onInitialize() {
@@ -62,7 +53,6 @@ public class NotchNet implements ModInitializer {
 			HttpURLConnection conn = (HttpURLConnection) new URL(NotchNetConfig.apiUrl + "/admin/detect-mods").openConnection();
 			conn.setRequestMethod("POST");
 			conn.setRequestProperty("Content-Type", "application/json");
-			conn.setRequestProperty("X-Internal-Secret", MOD_SECRET_KEY); 
 			conn.setDoOutput(true);
 			
 			try (OutputStream os = conn.getOutputStream()) {
@@ -88,7 +78,6 @@ public class NotchNet implements ModInitializer {
 						s.sendFeedback(() -> Text.literal("§7/notchnet <question> §r- Ask the AI a question."), false);
 						s.sendFeedback(() -> Text.literal("§7/notchnet status §r- Check backend connectivity."), false);
 						s.sendFeedback(() -> Text.literal("§7/notchnet config §r- View/Change settings."), false);
-						s.sendFeedback(() -> Text.literal("§7/notchnetauth <code> §r- Authenticate via website."), false);
 						return 1;
 					})
 				)
@@ -99,7 +88,7 @@ public class NotchNet implements ModInitializer {
 						CompletableFuture.runAsync(() -> {
 							try {
 								HttpURLConnection conn = (HttpURLConnection) new URL(NotchNetConfig.apiUrl + "/admin/reload-index").openConnection();
-								conn.setRequestMethod("POST"); // Just a dummy check
+								conn.setRequestMethod("POST"); 
 								conn.setConnectTimeout(2000);
 								int code = conn.getResponseCode();
 								s.sendFeedback(() -> Text.literal("§a✅ Connected to Backend! §7(Status: " + code + ")"), false);
@@ -165,77 +154,11 @@ public class NotchNet implements ModInitializer {
 		);
 	}
 
-	private static void verifyCode(String code, String username, String uuid) throws IOException, NoSuchAlgorithmException, InvalidKeyException {
-
-		String nonce = String.valueOf(System.currentTimeMillis() / 1000L);
-		String message = code + username + uuid + nonce;
-		String signature = calculateHMAC(message, MOD_SECRET_KEY);
-
-		JsonObject json = new JsonObject();
-		json.addProperty("code", code);
-		json.addProperty("username", username);
-		json.addProperty("uuid", uuid);
-		json.addProperty("nonce", nonce);
-		json.addProperty("signature", signature);
-
-		HttpURLConnection conn = (HttpURLConnection) new URL(NotchNetConfig.apiUrl + "/auth/verify-minecraft").openConnection();
-		conn.setRequestMethod("POST");
-		conn.setRequestProperty("Content-Type", "application/json");
-		conn.setDoOutput(true);
-		conn.setConnectTimeout(10_000);
-		conn.setReadTimeout(15_000);
-
-		try (OutputStream os = conn.getOutputStream()) {
-			os.write(new Gson().toJson(json).getBytes(StandardCharsets.UTF_8));
-		}
-
-		int codeRes = conn.getResponseCode();
-		String body = readResponse(conn);
-		System.out.println("[NotchNet] /auth/verify-minecraft response: " + codeRes + " " + body);
-
-		if (codeRes != 200) {
-			throw new IOException("Server returned " + codeRes + ": " + body);
-		}
-	}
-
-	private static String calculateHMAC(String data, String key) throws NoSuchAlgorithmException, InvalidKeyException {
-		SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-		Mac mac = Mac.getInstance("HmacSHA256");
-		mac.init(secretKeySpec);
-		byte[] hmacBytes = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-		StringBuilder result = new StringBuilder();
-		for (byte b : hmacBytes) {
-			result.append(String.format("%02x", b));
-		}
-		return result.toString();
-	}
-
 	private static String askQuestion(String question) throws IOException {
-
-		// Note: This method might need updates if we want to use the session token here too,
-		// but for now we are focusing on the website auth.
-		// If the mod itself needs to ask questions, it might need a similar auth flow or use a different endpoint.
-		// For now, leaving as is, but it might fail if /get-data now requires session_id.
-		// The user request said "users that are signed in with the minecraft mod, are the only ones that can use the bot, the sign in will take place in the notchnet-website".
-		// So maybe the mod doesn't need to ask questions anymore? Or it needs to be authenticated too?
-		// Assuming the mod just facilitates the website auth for now.
-
-		if (NotchNetConfig.token == null || NotchNetConfig.token.isEmpty()) {
-			// throw new IOException("You must be signed in to use NotchNet. Use /notchnetsignin to sign in.");
-			// For now, let's just try without token or maybe we need to update this too?
-			// The prompt says "the sign in will take place in the notchnet-website".
-			// So I'll leave this alone for now, but it might be broken if /get-data changed.
-			// Actually, I changed /get-data to require session_id.
-			// So the in-game bot will break unless I update it.
-			// But the prompt focused on "sign in will take place in the notchnet-website".
-			// I'll leave it for now and focus on the website flow.
-		}
-
 		JsonObject json = new JsonObject();
 		json.addProperty("question", question);
-		// json.addProperty("token", NotchNetConfig.token); // Old token
 
-		HttpURLConnection conn = (HttpURLConnection) new URL(NotchNetConfig.apiUrl + "/get-data").openConnection();
+		HttpURLConnection conn = (HttpURLConnection) new URL(NotchNetConfig.apiUrl + "/ask").openConnection();
 		conn.setRequestMethod("POST");
 		conn.setRequestProperty("Content-Type", "application/json");
 		conn.setDoOutput(true);
@@ -248,7 +171,7 @@ public class NotchNet implements ModInitializer {
 
 		int code = conn.getResponseCode();
 		String body = readResponse(conn);
-		System.out.println("[NotchNet] /get-data response: " + code + " " + body);
+		System.out.println("[NotchNet] /ask response: " + code + " " + body);
 
 		if (code != 200) {
 			throw new IOException("Server returned " + code + ": " + body);
