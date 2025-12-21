@@ -9,7 +9,7 @@
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/aaravchour/NotchNet-fabric-mod"
+		"sources": "https://github.com/aaravchour/notchnet-mod"
 	},
 	"license": "GPLv3",
 	"icon": "assets/notchnet/icon.png",
