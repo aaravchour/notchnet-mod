@@ -122,7 +122,7 @@ public class NotchNet implements ModInitializer {
 						.then(CommandManager.argument("value", StringArgumentType.string())
 							.executes(ctx -> {
 								String val = StringArgumentType.getString(ctx, "value");
-								NotchNetConfig.autoScanMods = Boolean.parseBoolean(val);
+								NotchNetConfig.autoScanMods = parseBoolean(val);
 								NotchNetConfig.saveConfig();
 								ctx.getSource().sendFeedback(() -> Text.literal("§a✅ AutoScanMods updated to: §r" + NotchNetConfig.autoScanMods), false);
 								return 1;
@@ -215,6 +215,12 @@ public class NotchNet implements ModInitializer {
 			return m.group(1).trim();
 		}
 		return null;
+	}
+
+	private static boolean parseBoolean(String value) {
+		if (value == null) return false;
+		String v = value.toLowerCase().trim();
+		return v.equals("true") || v.equals("1") || v.equals("on") || v.equals("yes");
 	}
 
 	private static String unescapeJsonString(String s) {
