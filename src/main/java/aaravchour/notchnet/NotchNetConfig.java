@@ -7,9 +7,9 @@ import java.io.IOException;
 import java.util.Properties;
 
 public class NotchNetConfig {
-    // Example config option
-    public static boolean useAdvancedMode = true;
     public static String token = "";
+    public static String apiUrl = "http://localhost:8000";
+    public static boolean autoScanMods = true;
 
     private static final File configFile = new File("config/notchnet.properties");
 
@@ -19,6 +19,8 @@ public class NotchNetConfig {
             try (FileInputStream fis = new FileInputStream(configFile)) {
                 properties.load(fis);
                 token = properties.getProperty("token", "");
+                apiUrl = properties.getProperty("apiUrl", "http://localhost:8000");
+                autoScanMods = Boolean.parseBoolean(properties.getProperty("autoScanMods", "true"));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -28,6 +30,14 @@ public class NotchNetConfig {
     public static void saveConfig() {
         Properties properties = new Properties();
         properties.setProperty("token", token);
+        properties.setProperty("apiUrl", apiUrl);
+        properties.setProperty("autoScanMods", String.valueOf(autoScanMods));
+        
+        File dir = configFile.getParentFile();
+        if (dir != null && !dir.exists()) {
+            dir.mkdirs();
+        }
+
         try (FileOutputStream fos = new FileOutputStream(configFile)) {
             properties.store(fos, "NotchNet Config");
         } catch (IOException e) {

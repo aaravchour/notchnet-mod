@@ -89,3 +89,8 @@ publishing {
 		// retrieving dependencies.
 	}
 }
+
+task copyLibs(type: Copy) {
+    from configurations.runtimeClasspath
+    into 'libs'
+}
