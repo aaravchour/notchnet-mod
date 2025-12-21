@@ -18,7 +18,7 @@ public class NotchNetConfig {
         if (configFile.exists()) {
             try (FileInputStream fis = new FileInputStream(configFile)) {
                 properties.load(fis);
-                apiUrl = properties.getProperty("apiUrl", "http://localhost:8000").trim();
+                apiUrl = fixUrl(properties.getProperty("apiUrl", "http://localhost:8000").trim());
                 
                 String autoScan = properties.getProperty("autoScanMods");
                 if (autoScan != null) {
@@ -33,6 +33,37 @@ public class NotchNetConfig {
                 e.printStackTrace();
             }
         }
+    }
+
+    public static String fixUrl(String url) {
+        if (url == null || url.isEmpty()) return "http://localhost:8000";
+        
+        String fixed = url.trim();
+        if (!fixed.startsWith("http://") && !fixed.startsWith("https://")) {
+            fixed = "http://" + fixed;
+        }
+
+        // Handle 0.0.0.0 -> 127.0.0.1 and missing port 8000
+        try {
+            java.net.URL u = new java.net.URL(fixed);
+            String host = u.getHost();
+            int port = u.getPort();
+            String protocol = u.getProtocol();
+
+            if (host.equals("0.0.0.0")) {
+                host = "127.0.0.1";
+            }
+
+            if (port == -1) {
+                port = 8000;
+            }
+
+            fixed = protocol + "://" + host + ":" + port;
+        } catch (Exception ignored) {
+            // If URL parsing fails, just return as is (already has protocol)
+        }
+
+        return fixed;
     }
 
     public static void saveConfig() {

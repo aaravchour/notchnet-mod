@@ -111,9 +111,13 @@ public class NotchNet implements ModInitializer {
 					.then(CommandManager.literal("apiUrl")
 						.then(CommandManager.argument("url", StringArgumentType.string())
 							.executes(ctx -> {
-								NotchNetConfig.apiUrl = StringArgumentType.getString(ctx, "url");
+								String rawUrl = StringArgumentType.getString(ctx, "url");
+								NotchNetConfig.apiUrl = NotchNetConfig.fixUrl(rawUrl);
 								NotchNetConfig.saveConfig();
 								ctx.getSource().sendFeedback(() -> Text.literal("§a✅ API URL updated to: §r" + NotchNetConfig.apiUrl), false);
+								if (!NotchNetConfig.apiUrl.equals(rawUrl) && !NotchNetConfig.apiUrl.equals("http://" + rawUrl)) {
+									ctx.getSource().sendFeedback(() -> Text.literal("§7(Automatically corrected for protocol/port/host)"), false);
+								}
 								return 1;
 							})
 						)
