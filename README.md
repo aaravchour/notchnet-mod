@@ -2,7 +2,7 @@
 
 **NotchNet** brings the power of AI directly into your Minecraft chat. Ask questions, get help with mechanics, or discover details about the mods you're playing with, all without leaving the game.
 
-## ❓ How it works
+## REQUIREMENTS TO RUN
 - Visit https://github.com/aaravchour/NotchNet
 
 ## 🚀 Features
