@@ -1,7 +1,18 @@
+version = project.mod_version
+group = "aaravchour.notchnet"
+
 subprojects {
     // Apply version from gradle.properties
     version = project.mod_version
     group = "aaravchour.notchnet"
+    
+    // Most projects use archivesBaseName or base.archivesName
+    // We can set it here for Forge/NeoForge
+    try {
+        archivesBaseName = "notchnet"
+    } catch (Exception e) {
+        // Handle cases where archivesBaseName might not be available yet
+    }
 
     // Print configuration for verification
     afterEvaluate {
