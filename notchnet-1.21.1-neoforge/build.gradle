@@ -1,0 +1,54 @@
+plugins {
+    id 'net.neoforged.gradle.userdev' version '7.0.145'
+    id "com.modrinth.minotaur" version "2.8.7"
+    id "net.darkhax.curseforgegradle" version "1.1.25"
+}
+
+base.archivesName = 'notchnet'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+minecraft {
+    // NeoForge 1.21.1
+}
+
+runs {
+    client {
+        workingDirectory project.file('run')
+        systemProperty 'neoforge.logging.markers', 'REGISTRIES'
+        systemProperty 'neoforge.logging.console.level', 'debug'
+        modSource sourceSets.main
+    }
+}
+
+dependencies {
+    implementation 'net.neoforged:neoforge:21.1.1'
+    implementation project(':common')
+}
+
+processResources {
+    inputs.property 'version', project.version
+
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand 'version': project.version
+    }
+}
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = System.getenv("MODRINTH_PROJECT_ID")
+    versionNumber = project.version
+    versionName = "NotchNet ${project.version} for 1.21.1 (NeoForge)"
+    uploadFile = jar
+    gameVersions = ["1.21.1"]
+    loaders = ["neoforge"]
+}
+
+task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+    apiToken = System.getenv("CURSEFORGE_TOKEN")
+    def mainFile = upload(System.getenv("CURSEFORGE_PROJECT_ID") ?: 0, jar)
+    mainFile.releaseType = "release"
+    mainFile.changelog = "See GitHub for changelog"
+    mainFile.addGameVersion("1.21.1")
+    mainFile.addModLoader("NeoForge")
+}

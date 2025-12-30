@@ -1,0 +1,10 @@
+subprojects {
+    // Apply version from gradle.properties
+    version = project.mod_version
+    group = "aaravchour.notchnet"
+
+    // Print configuration for verification
+    afterEvaluate {
+        println "Configuring project ${project.name} with Version: ${version} Group: ${group}"
+    }
+}

@@ -1,0 +1,16 @@
+[
+{
+  "modid": "notchnet",
+  "name": "NotchNet",
+  "description": "AI-powered answers in Minecraft!",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["ravistarr"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

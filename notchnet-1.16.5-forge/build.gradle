@@ -1,0 +1,72 @@
+buildscript {
+    repositories {
+        maven { url "https://maven.minecraftforge.net" }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '6.0.+', changing: true
+        classpath "com.modrinth.minotaur:Minotaur:2.8.7"
+        classpath "net.darkhax.curseforgegradle:CurseForgeGradle:1.1.25"
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'eclipse'
+apply plugin: 'maven-publish'
+apply plugin: "com.modrinth.minotaur"
+apply plugin: "net.darkhax.curseforgegradle"
+
+archivesBaseName = "notchnet"
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(8)
+
+minecraft {
+    mappings channel: 'official', version: '1.16.5'
+    
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                notchnet {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.16.5-36.2.39'
+    implementation project(':common')
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", "1.16.5"
+
+    filesMatching('META-INF/mods.toml') {
+        expand 'version': project.version, 'mcversion': "1.16.5"
+    }
+}
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = System.getenv("MODRINTH_PROJECT_ID")
+    versionNumber = project.version
+    versionName = "NotchNet ${project.version} for 1.16.5"
+    uploadFile = jar
+    gameVersions = ["1.16.5"]
+    loaders = ["forge"]
+}
+
+task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+    apiToken = System.getenv("CURSEFORGE_TOKEN")
+    def mainFile = upload(System.getenv("CURSEFORGE_PROJECT_ID") ?: 0, jar)
+    mainFile.releaseType = "release"
+    mainFile.changelog = "See GitHub for changelog"
+    mainFile.addGameVersion("1.16.5")
+    mainFile.addModLoader("Forge")
+}

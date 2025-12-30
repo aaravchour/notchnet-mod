@@ -1,0 +1,70 @@
+plugins {
+	id 'fabric-loom' version '1.11-SNAPSHOT'
+	id 'maven-publish'
+	id "com.modrinth.minotaur" version "2.8.7"
+	id "net.darkhax.curseforgegradle" version "1.1.25"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	maven {
+		name = "Terraformers"
+		url = "https://maven.terraformersmc.com/"
+	}
+	maven { url "https://maven.shedaniel.me/" }
+    mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	modLocalRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+    
+    implementation project(':common')
+}
+
+modrinth {
+	token = System.getenv("MODRINTH_TOKEN")
+	projectId = System.getenv("MODRINTH_PROJECT_ID")
+	versionNumber = project.version
+	versionName = "NotchNet ${project.version} for 1.20.1 (Fabric)"
+	uploadFile = remapJar
+	gameVersions = ["1.20.1"]
+	loaders = ["fabric"]
+}
+
+task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+	apiToken = System.getenv("CURSEFORGE_TOKEN")
+	def mainFile = upload(System.getenv("CURSEFORGE_PROJECT_ID") ?: 0, remapJar)
+	mainFile.releaseType = "release"
+	mainFile.changelog = "See GitHub for changelog"
+	mainFile.addGameVersion("1.20.1")
+	mainFile.addModLoader("Fabric")
+}
+
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": inputs.properties.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 17
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
+}

@@ -1,0 +1,33 @@
+pluginManagement {
+	repositories {
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+		maven {
+			name = 'NeoForge'
+			url = 'https://maven.neoforged.net/releases'
+		}
+		maven {
+			name = 'Forge'
+			url = 'https://maven.minecraftforge.net/'
+		}
+		mavenCentral()
+		gradlePluginPortal()
+	}
+}
+
+plugins {
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
+}
+
+rootProject.name = 'NotchNet'
+include 'common'
+include 'notchnet-1.21.11'
+include 'notchnet-1.20.1-fabric'
+include 'notchnet-1.16.5-fabric'
+include 'notchnet-1.12.2-forge'
+include 'notchnet-1.7.10-forge'
+include 'notchnet-1.21.1-neoforge'
+include 'notchnet-1.20.1-forge'
+include 'notchnet-1.16.5-forge'

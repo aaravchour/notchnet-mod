@@ -1,0 +1,62 @@
+buildscript {
+    repositories {
+        maven { 
+            url "https://nexus.gtnewhorizons.com/repository/public/" 
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath "com.gtnewhorizons:retrofuturagradle:1.4.9"
+        classpath "com.modrinth.minotaur:Minotaur:2.8.7"
+        classpath "net.darkhax.curseforgegradle:CurseForgeGradle:1.1.25"
+    }
+}
+
+apply plugin: "com.gtnewhorizons.retrofuturagradle"
+apply plugin: "com.modrinth.minotaur"
+apply plugin: "net.darkhax.curseforgegradle"
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+archivesBaseName = "notchnet"
+
+minecraft {
+    version = "1.12.2"
+}
+
+dependencies {
+    implementation project(':common')
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft.version
+
+    filesMatching('mcmod.info') {
+        expand 'version':project.version, 'mcversion':project.minecraft.version
+    }
+}
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = System.getenv("MODRINTH_PROJECT_ID")
+    versionNumber = project.version
+    versionName = "NotchNet ${project.version} for 1.12.2"
+    uploadFile = jar
+    gameVersions = ["1.12.2"]
+    loaders = ["forge"]
+}
+
+task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+    apiToken = System.getenv("CURSEFORGE_TOKEN")
+    def mainFile = upload(System.getenv("CURSEFORGE_PROJECT_ID") ?: 0, jar)
+    mainFile.releaseType = "release"
+    mainFile.changelog = "See GitHub for changelog"
+    mainFile.addGameVersion("1.12.2")
+    mainFile.addModLoader("Forge")
+}

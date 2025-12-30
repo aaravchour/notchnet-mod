@@ -1,0 +1,20 @@
+{
+	"schemaVersion": 1,
+	"id": "notchnet",
+	"version": "${version}",
+	"name": "NotchNet",
+	"description": "AI-powered answers in Minecraft!",
+	"authors": ["ravistarr"],
+	"license": "GPLv3",
+	"icon": "assets/notchnet/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["aaravchour.notchnet.NotchNet"]
+	},
+	"depends": {
+		"fabricloader": ">=0.14.22",
+		"minecraft": "~1.16.5",
+		"java": ">=8",
+		"fabric-api": "*"
+	}
+}

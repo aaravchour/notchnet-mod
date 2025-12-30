@@ -1,0 +1,23 @@
+modLoader="javafml"
+loaderVersion="[2,)"
+license="GPLv3"
+
+[[mods]]
+modId="notchnet"
+version="${version}"
+displayName="NotchNet"
+authors="ravistarr"
+description="AI-powered answers in Minecraft!"
+
+[[dependencies.notchnet]]
+    modId="neoforge"
+    mandatory=true
+    versionRange="[21,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.notchnet]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.21.1,1.22)"
+    ordering="NONE"
+    side="BOTH"

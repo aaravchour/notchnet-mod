@@ -1,0 +1,24 @@
+modLoader=javafml
+loaderVersion=[36,)
+license=GPLv3
+issueTrackerURL=https://github.com/aaravchour/notchnet-mod/issues
+
+[[mods]]
+modId="notchnet"
+version="${version}"
+displayName="NotchNet"
+authors="ravistarr"
+description="AI-powered answers in Minecraft!"
+
+[[dependencies.notchnet]]
+    modId="forge"
+    mandatory=true
+    versionRange="[36,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.notchnet]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.5,1.17)"
+    ordering="NONE"
+    side="BOTH"
