@@ -119,4 +119,68 @@ public class NotchNetCore {
         }
         return sb.toString();
     }
+
+    public interface StreamCallback {
+        void onToken(String token);
+        void onError(String error);
+        void onDone();
+    }
+
+    public static void askQuestionStream(String question, StreamCallback callback) {
+        new Thread(() -> {
+            try {
+                processStream(question, callback);
+            } catch (Exception e) {
+                callback.onError(e.getMessage());
+            }
+        }).start();
+    }
+
+    private static void processStream(String question, StreamCallback callback) throws IOException {
+        JsonObject json = new JsonObject();
+        json.addProperty("question", question);
+
+        HttpURLConnection conn = (HttpURLConnection) new URL(CoreConfig.apiUrl + "/ask/stream").openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("Accept", "text/event-stream");
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(10_000);
+        conn.setReadTimeout(60_000); // Increased timeout for streaming
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(new Gson().toJson(json).getBytes(StandardCharsets.UTF_8));
+        }
+
+        int code = conn.getResponseCode();
+        if (code != 200) {
+            callback.onError("Server returned " + code);
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("data: ")) {
+                    String data = line.substring(6).trim();
+                    if ("[DONE]".equals(data)) {
+                        callback.onDone();
+                        return;
+                    }
+
+                    // Parse JSON: {"answer": "token"} or {"error": "..."}
+                    String token = parseJsonField(data, "answer");
+                    if (token != null) {
+                        callback.onToken(token.replace("\\n", "\n"));
+                    } else {
+                        String error = parseJsonField(data, "error");
+                        if (error != null) {
+                            callback.onError(error);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
+
