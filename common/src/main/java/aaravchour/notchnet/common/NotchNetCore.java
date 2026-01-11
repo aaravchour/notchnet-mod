@@ -146,7 +146,7 @@ public class NotchNetCore {
         conn.setRequestProperty("Accept", "text/event-stream");
         conn.setDoOutput(true);
         conn.setConnectTimeout(10_000);
-        conn.setReadTimeout(60_000); // Increased timeout for streaming
+        conn.setReadTimeout(0); // Infinite timeout as requested
 
         try (OutputStream os = conn.getOutputStream()) {
             os.write(new Gson().toJson(json).getBytes(StandardCharsets.UTF_8));
