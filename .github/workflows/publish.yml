@@ -3,6 +3,9 @@ name: Publish Mods
 on:
   release:
     types: [created]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
