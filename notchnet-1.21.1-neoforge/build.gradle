@@ -1,15 +1,18 @@
 plugins {
-    id 'net.neoforged.gradle.userdev' version '7.0.145'
-    id "com.modrinth.minotaur" version "2.8.7"
+    id 'net.neoforged.gradle.userdev' version '7.1.36'
+    id "com.modrinth.minotaur" version "2.+"
     id "net.darkhax.curseforgegradle" version "1.1.25"
 }
 
-base.archivesName = 'notchnet'
+// NeoForge 7.1.x overrides version to MC version string; reset it
+version = '1.5.0'
+group = 'aaravchour.notchnet'
+base.archivesName = 'notchnet-1.21.1-neoforge'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 minecraft {
-    // NeoForge 1.21.1
+    version = '1.21.1'
 }
 
 runs {
@@ -22,7 +25,7 @@ runs {
 }
 
 dependencies {
-    implementation 'net.neoforged:neoforge:21.1.1'
+    implementation 'net.neoforged:neoforge:21.1.232'
     implementation project(':common')
 }
 
@@ -34,21 +37,37 @@ processResources {
     }
 }
 
+// Ensure version is correct after NeoForge plugin overrides
+afterEvaluate {
+    version = '1.5.0'
+    base.archivesName = 'notchnet-1.21.1-neoforge'
+}
+
 modrinth {
     token = System.getenv("MODRINTH_TOKEN")
     projectId = System.getenv("MODRINTH_PROJECT_ID")
     versionNumber = project.version
-    versionName = "NotchNet ${project.version} for 1.21.1 (NeoForge)"
+    versionName = "NotchNet ${project.version} — MC 1.21.1 NeoForge"
     uploadFile = jar
     gameVersions = ["1.21.1"]
     loaders = ["neoforge"]
+    changelog = "Updated to NeoForge 21.1.232 (latest stable). Dependency and build updates."
+    dependencies {
+        optional.project("notchnet-backend")
+    }
 }
 
 task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
     apiToken = System.getenv("CURSEFORGE_TOKEN")
-    def mainFile = upload(System.getenv("CURSEFORGE_PROJECT_ID") ?: 0, jar)
+    def projectId = System.getenv("CURSEFORGE_PROJECT_ID")
+    if (!projectId) {
+        println "WARNING: CURSEFORGE_PROJECT_ID not set, skipping CurseForge publish"
+        return
+    }
+    def mainFile = upload(projectId.toInteger(), jar)
     mainFile.releaseType = "release"
-    mainFile.changelog = "See GitHub for changelog"
+    mainFile.changelog = "Updated to NeoForge 21.1.232 (latest stable)"
     mainFile.addGameVersion("1.21.1")
     mainFile.addModLoader("NeoForge")
+    mainFile.addJavaVersion("Java 21")
 }
