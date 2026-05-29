@@ -52,9 +52,6 @@ modrinth {
     gameVersions = ["1.21.1"]
     loaders = ["neoforge"]
     changelog = "Ported to NeoForge 26.1.2.67-beta (new versioning scheme). Java 25 required."
-    dependencies {
-        optional.project("notchnet-backend")
-    }
 }
 
 task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
