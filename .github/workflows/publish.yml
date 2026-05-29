@@ -22,12 +22,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Java 25
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '25'
-
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
 
@@ -41,4 +35,3 @@ jobs:
           MODRINTH_PROJECT_ID: notchnet
         run: |
           ./gradlew :notchnet-1.21.1-neoforge:modrinth :notchnet-1.21.1-neoforge:publishCurseForge
-          ./gradlew :notchnet-1.21.1-neoforge-26x:modrinth :notchnet-1.21.1-neoforge-26x:publishCurseForge
