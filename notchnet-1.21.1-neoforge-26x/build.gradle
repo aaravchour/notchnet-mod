@@ -1,0 +1,73 @@
+plugins {
+    id 'net.neoforged.gradle.userdev' version '7.1.36'
+    id "com.modrinth.minotaur" version "2.+"
+    id "net.darkhax.curseforgegradle" version "1.1.25"
+}
+
+// NeoForge 7.1.x may override version; reset explicitly
+version = '1.6.0'
+group = 'aaravchour.notchnet'
+base.archivesName = 'notchnet-1.21.1-neoforge-26x'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+minecraft {
+    version = '1.21.1'
+}
+
+runs {
+    client {
+        workingDirectory project.file('run')
+        systemProperty 'neoforge.logging.markers', 'REGISTRIES'
+        systemProperty 'neoforge.logging.console.level', 'debug'
+        modSource sourceSets.main
+    }
+}
+
+dependencies {
+    implementation 'net.neoforged:neoforge:26.1.2.67-beta'
+    implementation project(':common')
+}
+
+processResources {
+    inputs.property 'version', project.version
+
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand 'version': project.version
+    }
+}
+
+// Ensure version is correct after NeoForge plugin overrides
+afterEvaluate {
+    version = '1.6.0'
+    base.archivesName = 'notchnet-1.21.1-neoforge-26x'
+}
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = System.getenv("MODRINTH_PROJECT_ID")
+    versionNumber = project.version
+    versionName = "NotchNet ${project.version} — MC 1.21.1 NeoForge 26.1.x"
+    uploadFile = jar
+    gameVersions = ["1.21.1"]
+    loaders = ["neoforge"]
+    changelog = "Ported to NeoForge 26.1.2.67-beta (new versioning scheme). Java 25 required."
+    dependencies {
+        optional.project("notchnet-backend")
+    }
+}
+
+task publishCurseForge(type: net.darkhax.curseforgegradle.TaskPublishCurseForge) {
+    apiToken = System.getenv("CURSEFORGE_TOKEN")
+    def projectId = System.getenv("CURSEFORGE_PROJECT_ID")
+    if (!projectId) {
+        println "WARNING: CURSEFORGE_PROJECT_ID not set, skipping CurseForge publish"
+        return
+    }
+    def mainFile = upload(projectId.toInteger(), jar)
+    mainFile.releaseType = "beta"
+    mainFile.changelog = "Ported to NeoForge 26.1.2.67-beta (new versioning scheme). Java 25 required."
+    mainFile.addGameVersion("1.21.1")
+    mainFile.addModLoader("NeoForge")
+    mainFile.addJavaVersion("Java 25")
+}
