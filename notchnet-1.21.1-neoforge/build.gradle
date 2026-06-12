@@ -5,7 +5,7 @@ plugins {
 }
 
 // NeoForge 7.1.x overrides version to MC version string; reset it
-version = '1.5.0'
+version = project.mod_version
 group = 'aaravchour.notchnet'
 base.archivesName = 'notchnet-1.21.1-neoforge'
 
@@ -39,7 +39,7 @@ processResources {
 
 // Ensure version is correct after NeoForge plugin overrides
 afterEvaluate {
-    version = '1.5.0'
+    version = project.mod_version
     base.archivesName = 'notchnet-1.21.1-neoforge'
 }
 

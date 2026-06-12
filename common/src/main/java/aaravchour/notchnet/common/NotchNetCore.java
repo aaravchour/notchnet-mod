@@ -1,7 +1,10 @@
 package aaravchour.notchnet.common;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -9,44 +12,113 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class NotchNetCore {
+
+    private static final Gson GSON = new Gson();
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(4);
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(NotchNetCore::shutdownExecutor));
+    }
+
+    // Retry configuration
+    private static final int MAX_RETRIES = 1;
+    private static final long INITIAL_BACKOFF_MS = 1000;
+
+    private static final int CONNECT_TIMEOUT_MS = 10_000;
+    private static final int READ_TIMEOUT_MS = 15_000;
+    private static final int STREAM_READ_TIMEOUT_MS = 120_000; // cap from infinite
+
+    public static void submit(Runnable task) {
+        EXECUTOR.submit(task);
+    }
+
+    public static void shutdownExecutor() {
+        EXECUTOR.shutdown();
+        try {
+            if (!EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+                EXECUTOR.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            EXECUTOR.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
 
     public static String askQuestion(String question) throws IOException {
         JsonObject json = new JsonObject();
         json.addProperty("question", question);
+        String requestBody = GSON.toJson(json);
 
-        HttpURLConnection conn = (HttpURLConnection) new URL(CoreConfig.apiUrl + "/ask").openConnection();
+        IOException lastError = null;
+        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            if (attempt > 0) {
+                long backoff = INITIAL_BACKOFF_MS * attempt;
+                try {
+                    Thread.sleep(backoff);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Retry interrupted", e);
+                }
+            }
+
+            HttpURLConnection conn = null;
+            try {
+                conn = openConnection(CoreConfig.apiUrl + "/ask", false);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(requestBody.getBytes(StandardCharsets.UTF_8));
+                }
+
+                int code = conn.getResponseCode();
+                String body = readResponse(conn);
+
+                if (code == 200) {
+                    JsonObject resp = JsonParser.parseString(body).getAsJsonObject();
+                    JsonElement answerEl = resp.get("answer");
+                    if (answerEl == null || answerEl.isJsonNull()) {
+                        throw new IOException("No 'answer' field in server response: " + body);
+                    }
+                    return answerEl.getAsString().replace("\\n", "\n");
+                }
+
+                if (shouldRetry(code)) {
+                    lastError = new IOException("Server returned " + code + ": " + body);
+                    continue;
+                }
+                throw new IOException("Server returned " + code + ": " + body);
+            } catch (SocketTimeoutException e) {
+                lastError = new IOException("Connection timed out", e);
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }
+        throw lastError != null ? lastError : new IOException("Request failed after retries");
+    }
+
+    private static HttpURLConnection openConnection(String urlString, boolean isStream) throws IOException {
+        HttpURLConnection conn = (HttpURLConnection) new URL(urlString).openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setDoOutput(true);
-        conn.setConnectTimeout(10_000);
-        conn.setReadTimeout(15_000);
+        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        conn.setReadTimeout(isStream ? STREAM_READ_TIMEOUT_MS : READ_TIMEOUT_MS);
+        return conn;
+    }
 
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(new Gson().toJson(json).getBytes(StandardCharsets.UTF_8));
-        }
-
-        int code = conn.getResponseCode();
-        String body = readResponse(conn);
-
-        if (code != 200) {
-            throw new IOException("Server returned " + code + ": " + body);
-        }
-
-        String answer = parseJsonField(body, "answer");
-        if (answer == null) {
-            throw new IOException("No 'answer' field in server response: " + body);
-        }
-        return answer.replace("\\n", "\n");
+    private static boolean shouldRetry(int code) {
+        return code == 429 || code == 502 || code == 503 || code == 504;
     }
 
     public static String readResponse(HttpURLConnection conn) throws IOException {
-        InputStream stream = (conn.getResponseCode() >= 200 && conn.getResponseCode() < 300)
+        int code = conn.getResponseCode();
+        InputStream stream = (code >= 200 && code < 300)
                 ? conn.getInputStream()
                 : conn.getErrorStream();
 
@@ -61,65 +133,6 @@ public class NotchNetCore {
         }
     }
 
-    public static String parseJsonField(String json, String field) {
-        if (json == null) return null;
-
-        Pattern strPattern = Pattern.compile("\"" + Pattern.quote(field) + "\"\\s*:\\s*\"((?:\\\\.|[^\"])*)\"");
-        Matcher m = strPattern.matcher(json);
-        if (m.find()) {
-            return unescapeJsonString(m.group(1));
-        }
-
-        Pattern nonStrPattern = Pattern.compile("\"" + Pattern.quote(field) + "\"\\s*:\\s*([^,}\\]]+)");
-        m = nonStrPattern.matcher(json);
-        if (m.find()) {
-            return m.group(1).trim();
-        }
-        return null;
-    }
-
-    public static String unescapeJsonString(String s) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '\\' && i + 1 < s.length()) {
-                char next = s.charAt(i + 1);
-                switch (next) {
-                    case '"': sb.append('"'); i++; break;
-                    case '\\': sb.append('\\'); i++; break;
-                    case '/': sb.append('/'); i++; break;
-                    case 'b': sb.append('\b'); i++; break;
-                    case 'f': sb.append('\f'); i++; break;
-                    case 'n': sb.append('\n'); i++; break;
-                    case 'r': sb.append('\r'); i++; break;
-                    case 't': sb.append('\t'); i++; break;
-                    case 'u':
-                        if (i + 5 < s.length()) {
-                            String hex = s.substring(i + 2, i + 6);
-                            try {
-                                sb.append((char) Integer.parseInt(hex, 16));
-                                i += 5;
-                            } catch (NumberFormatException ex) {
-                                sb.append("\\u");
-                                i++;
-                            }
-                        } else {
-                            sb.append("\\u");
-                            i++;
-                        }
-                        break;
-                    default:
-                        sb.append(next);
-                        i++;
-                        break;
-                }
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
-
     public interface StreamCallback {
         void onToken(String token);
         void onError(String error);
@@ -127,60 +140,82 @@ public class NotchNetCore {
     }
 
     public static void askQuestionStream(String question, StreamCallback callback) {
-        new Thread(() -> {
+        EXECUTOR.submit(() -> {
             try {
                 processStream(question, callback);
             } catch (Exception e) {
                 callback.onError(e.getMessage());
             }
-        }).start();
+        });
     }
 
     private static void processStream(String question, StreamCallback callback) throws IOException {
         JsonObject json = new JsonObject();
         json.addProperty("question", question);
+        String requestBody = GSON.toJson(json);
 
-        HttpURLConnection conn = (HttpURLConnection) new URL(CoreConfig.apiUrl + "/ask/stream").openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/json");
-        conn.setRequestProperty("Accept", "text/event-stream");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(10_000);
-        conn.setReadTimeout(0); // Infinite timeout as requested
+        IOException lastError = null;
+        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            if (attempt > 0) {
+                long backoff = INITIAL_BACKOFF_MS * attempt;
+                try {
+                    Thread.sleep(backoff);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Retry interrupted", e);
+                }
+            }
 
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(new Gson().toJson(json).getBytes(StandardCharsets.UTF_8));
-        }
+            HttpURLConnection conn = null;
+            try {
+                conn = openConnection(CoreConfig.apiUrl + "/ask/stream", true);
+                conn.setRequestProperty("Accept", "text/event-stream");
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(requestBody.getBytes(StandardCharsets.UTF_8));
+                }
 
-        int code = conn.getResponseCode();
-        if (code != 200) {
-            callback.onError("Server returned " + code);
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("data: ")) {
-                    String data = line.substring(6).trim();
-                    if ("[DONE]".equals(data)) {
-                        callback.onDone();
-                        return;
+                int code = conn.getResponseCode();
+                if (code != 200) {
+                    if (shouldRetry(code)) {
+                        lastError = new IOException("Server returned " + code);
+                        continue;
                     }
+                    callback.onError("Server returned " + code);
+                    return;
+                }
 
-                    // Parse JSON: {"answer": "token"} or {"error": "..."}
-                    String token = parseJsonField(data, "answer");
-                    if (token != null) {
-                        callback.onToken(token.replace("\\n", "\n"));
-                    } else {
-                        String error = parseJsonField(data, "error");
-                        if (error != null) {
-                            callback.onError(error);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.startsWith("data: ")) {
+                            String data = line.substring(6).trim();
+                            if ("[DONE]".equals(data)) {
+                                callback.onDone();
+                                return;
+                            }
+
+                            JsonObject payload = JsonParser.parseString(data).getAsJsonObject();
+                            JsonElement answerEl = payload.get("answer");
+                            if (answerEl != null && !answerEl.isJsonNull()) {
+                                callback.onToken(answerEl.getAsString().replace("\\n", "\n"));
+                            } else {
+                                JsonElement errorEl = payload.get("error");
+                                if (errorEl != null && !errorEl.isJsonNull()) {
+                                    callback.onError(errorEl.getAsString());
+                                    return;
+                                }
+                            }
                         }
                     }
                 }
+                callback.onDone();
+                return;
+            } catch (SocketTimeoutException e) {
+                lastError = new IOException("Stream timed out", e);
+            } finally {
+                if (conn != null) conn.disconnect();
             }
         }
+        callback.onError(lastError != null ? lastError.getMessage() : "Request failed after retries");
     }
 }
-

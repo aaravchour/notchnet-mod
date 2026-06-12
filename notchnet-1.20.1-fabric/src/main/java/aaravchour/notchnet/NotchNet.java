@@ -82,7 +82,7 @@ public class NotchNet implements ModInitializer {
 					.executes(ctx -> {
 						ServerCommandSource s = ctx.getSource();
 						s.sendFeedback(() -> Text.literal("§6[NotchNet]§r Checking connection..."), false);
-						CompletableFuture.runAsync(() -> {
+						NotchNetCore.submit(() -> {
 							try {
 								HttpURLConnection conn = (HttpURLConnection) new URL(CoreConfig.apiUrl + "/admin/reload-index").openConnection();
 								conn.setRequestMethod("POST"); 
@@ -123,7 +123,7 @@ public class NotchNet implements ModInitializer {
 						ServerCommandSource source = ctx.getSource();
 						source.sendFeedback(() -> Text.literal("§6[NotchNet]§r Thinking..."), false);
 
-						CompletableFuture.runAsync(() -> {
+						NotchNetCore.submit(() -> {
 							try {
 								String answer = NotchNetCore.askQuestion(question);
 								source.sendFeedback(() -> Text.literal("§b--- Answer ---"), false);

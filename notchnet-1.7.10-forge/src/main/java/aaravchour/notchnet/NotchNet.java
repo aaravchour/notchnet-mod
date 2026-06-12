@@ -1,7 +1,7 @@
 package aaravchour.notchnet;
 
-import aaravchour.notchnet.common.NotchNetCore;
 import aaravchour.notchnet.common.CoreConfig;
+import aaravchour.notchnet.common.NotchNetCore;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
@@ -44,14 +44,13 @@ public class NotchNet {
                 return;
             }
 
-            final String question = "";
             StringBuilder sb = new StringBuilder();
-            for(String s : args) sb.append(s).append(" ");
+            for (String s : args) sb.append(s).append(" ");
             final String q = sb.toString().trim();
-            
+
             sender.addChatMessage(new ChatComponentText("§6[NotchNet]§r Thinking..."));
 
-            new Thread(new Runnable() {
+            NotchNetCore.submit(new Runnable() {
                 @Override
                 public void run() {
                     try {
@@ -65,9 +64,9 @@ public class NotchNet {
                         sender.addChatMessage(new ChatComponentText("§c⚠️ Error: §r" + e.getMessage()));
                     }
                 }
-            }).start();
+            });
         }
-        
+
         @Override
         public int getRequiredPermissionLevel() { return 0; }
     }
